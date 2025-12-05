@@ -1,108 +1,108 @@
 import streamlit as st
-import time
 import random
+import time
+from PIL import Image, ImageDraw
+
+# Game constants
+WIDTH = 800
+HEIGHT = 600
+CAR_WIDTH = 60
+CAR_HEIGHT = 120
+OBSTACLE_WIDTH = 60
+OBSTACLE_HEIGHT = 60
+OBSTACLE_SPEED = 8
+FPS = 30
 
 # Initialize session state
-if 'game_started' not in st.session_state:
-    st.session_state.game_started = False
-if 'player_pos' not in st.session_state:
-    st.session_state.player_pos = 0
-if 'opponent_pos' not in st.session_state:
-    st.session_state.opponent_pos = 0
-if 'race_distance' not in st.session_state:
-    st.session_state.race_distance = 50
-if 'game_over' not in st.session_state:
-    st.session_state.game_over = False
-if 'winner' not in st.session_state:
-    st.session_state.winner = None
+if "car_x" not in st.session_state:
+    st.session_state.car_x = WIDTH // 2 - CAR_WIDTH // 2
+if "car_y" not in st.session_state:
+    st.session_state.car_y = HEIGHT - CAR_HEIGHT - 20
+if "obstacles" not in st.session_state:
+    st.session_state.obstacles = []
+if "running" not in st.session_state:
+    st.session_state.running = False
+if "score" not in st.session_state:
+    st.session_state.score = 0
+if "car_speed" not in st.session_state:
+    st.session_state.car_speed = 20
 
-st.title("🏁 Racing Game 🏎️")
+# Set up page layout
+st.set_page_config(page_title="Streamlit Racing Game", layout="centered")
+st.title("🚗 **Racing Game**")
 
-# Game controls
-col1, col2, col3 = st.columns([1, 1, 1])
+# Controls
+col_left, col_start, col_right = st.columns(3)
 
-with col1:
-    if st.button("🚀 Start Race", disabled=st.session_state.game_started):
-        st.session_state.game_started = True
-        st.session_state.player_pos = 0
-        st.session_state.opponent_pos = 0
-        st.session_state.game_over = False
-        st.session_state.winner = None
-        st.rerun()
+if col_left.button("⬅️ Move Left"):
+    st.session_state.car_x -= st.session_state.car_speed
 
-with col2:
-    if st.button("⏩ Accelerate!", disabled=not st.session_state.game_started or st.session_state.game_over):
-        # Player moves forward
-        st.session_state.player_pos += random.randint(2, 5)
-        
-        # Opponent moves forward
-        st.session_state.opponent_pos += random.randint(1, 4)
-        
-        # Check for winner
-        if st.session_state.player_pos >= st.session_state.race_distance:
-            st.session_state.game_over = True
-            st.session_state.winner = "Player"
-        elif st.session_state.opponent_pos >= st.session_state.race_distance:
-            st.session_state.game_over = True
-            st.session_state.winner = "Opponent"
-        
-        st.rerun()
+if col_right.button("➡️ Move Right"):
+    st.session_state.car_x += st.session_state.car_speed
 
-with col3:
-    if st.button("🔄 Reset"):
-        st.session_state.game_started = False
-        st.session_state.player_pos = 0
-        st.session_state.opponent_pos = 0
-        st.session_state.game_over = False
-        st.session_state.winner = None
-        st.rerun()
+if col_start.button("▶️ Start Game"):
+    st.session_state.running = True
+    st.session_state.score = 0
+    st.session_state.obstacles = []
 
-# Display race track
-if st.session_state.game_started:
-    st.markdown("---")
-    st.subheader("Race Track")
-    
-    # Player track
-    player_track = ["⬜"] * st.session_state.race_distance
-    player_track[0] = "🏁"
-    player_pos = min(st.session_state.player_pos, st.session_state.race_distance - 1)
-    player_track[player_pos] = "🔵"
-    player_track[-1] = "🏆"
-    
-    st.markdown(f"**Player:** {''.join(player_track)}")
-    st.progress(st.session_state.player_pos / st.session_state.race_distance)
-    
-    # Opponent track
-    opponent_track = ["⬜"] * st.session_state.race_distance
-    opponent_track[0] = "🏁"
-    opponent_pos = min(st.session_state.opponent_pos, st.session_state.race_distance - 1)
-    opponent_track[opponent_pos] = "🔴"
-    opponent_track[-1] = "🏆"
-    
-    st.markdown(f"**Opponent:** {''.join(opponent_track)}")
-    st.progress(st.session_state.opponent_pos / st.session_state.race_distance)
-    
-    # Game status
-    if st.session_state.game_over:
-        st.markdown("---")
-        if st.session_state.winner == "Player":
-            st.success("🎉 You Win! Great race!")
-            st.balloons()
+# Game mechanics
+def step_game():
+    """Updates obstacles and checks for collisions."""
+    # Spawn obstacles
+    if random.random() < 0.05:
+        st.session_state.obstacles.append([random.randint(0, WIDTH - OBSTACLE_WIDTH), 0])
+
+    # Move obstacles downwards
+    new_obstacles = []
+    for x, y in st.session_state.obstacles:
+        y += OBSTACLE_SPEED
+        if y < HEIGHT:
+            new_obstacles.append([x, y])
         else:
-            st.error("😢 Opponent Wins! Better luck next time!")
-    else:
-        st.info("👆 Keep clicking 'Accelerate!' to race forward!")
+            st.session_state.score += 1  # Increase score for each passed obstacle
+    st.session_state.obstacles = new_obstacles
+
+    # Check for collisions
+    for x, y in st.session_state.obstacles:
+        if (
+            x < st.session_state.car_x + CAR_WIDTH
+            and x + OBSTACLE_WIDTH > st.session_state.car_x
+            and y < st.session_state.car_y + CAR_HEIGHT
+            and y + OBSTACLE_HEIGHT > st.session_state.car_y
+        ):
+            st.session_state.running = False
+            st.error("💥 Crash! Game Over!")
+            break
+
+def render_game():
+    """Renders the car and obstacles on the canvas."""
+    img = Image.new("RGB", (WIDTH, HEIGHT), "#1E2A3A")
+    draw = ImageDraw.Draw(img)
+
+    # Draw the car
+    draw.rectangle(
+        [(st.session_state.car_x, st.session_state.car_y),
+         (st.session_state.car_x + CAR_WIDTH, st.session_state.car_y + CAR_HEIGHT)],
+        fill="yellow"
+    )
+
+    # Draw obstacles
+    for x, y in st.session_state.obstacles:
+        draw.rectangle(
+            [(x, y), (x + OBSTACLE_WIDTH, y + OBSTACLE_HEIGHT)],
+            fill="red"
+        )
+
+    # Display image
+    st.image(img)
+
+# Game loop
+if st.session_state.running:
+    step_game()
+    render_game()
+    st.write(f"🏆 **Score:** {st.session_state.score}")
+    time.sleep(1.0 / FPS)
+    st.experimental_rerun()  # Refresh the page for smooth game loop
 else:
-    st.info("👆 Click 'Start Race' to begin!")
-    
-# Instructions
-with st.expander("📖 How to Play"):
-    st.markdown("""
-    1. Click **Start Race** to begin
-    2. Click **Accelerate!** repeatedly to move your car forward (blue circle)
-    3. Race against the opponent (red circle) to reach the finish line first
-    4. The first car to reach the trophy 🏆 wins!
-    5. Click **Reset** to start a new race
-    
-    Each click moves you forward by a random amount, so keep clicking fast!
-    """)
+    render_game()
+    st.write(f"🏆 **Score:** {st.session_state.score}")
