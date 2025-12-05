@@ -107,4 +107,5 @@ else:
     render_game()
     st.write(f"🏆 **Score:** {st.session_state.score}")
 
-streamlit SyntaxError: invalid syntax run racing_game.py
+File "/mount/src/alva/car.py", line 110
+  streamlit SyntaxError: invalid syntax SyntaxError: invalid syntax run racing_game.py
