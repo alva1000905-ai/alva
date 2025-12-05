@@ -107,4 +107,4 @@ else:
     render_game()
     st.write(f"🏆 **Score:** {st.session_state.score}")
 
-streamlit run racing_game.py
+streamlit SyntaxError: invalid syntax run racing_game.py
