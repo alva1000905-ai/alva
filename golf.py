@@ -6,11 +6,43 @@ import streamlit.components.v1 as components
 components.html(
 """
 <style>
-body { margin:0; overflow:hidden; background:#2ba84a; }
-canvas { touch-action:none; }
+body {
+    margin:0;
+    overflow:hidden;
+    background:#2ba84a;
+}
+
+/* 容器負責裁切 */
+#game-wrapper {
+    width: 100vw;
+    height: 100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    overflow:hidden;
+}
+
+/* 手機：限制可視大小（裁切，不縮放） */
+@media (max-width: 768px) {
+    #game-wrapper {
+        align-items:flex-start;
+        padding-top:10px;
+    }
+    canvas {
+        transform: translateY(-40px);
+    }
+}
+
+canvas {
+    width: 900px;
+    height: 500px;
+    touch-action:none;
+}
 </style>
 
-<canvas id="game" width="900" height="500"></canvas>
+<div id="game-wrapper">
+    <canvas id="game" width="900" height="500"></canvas>
+</div>
 
 <script>
 const canvas = document.getElementById("game");
@@ -37,26 +69,25 @@ function generateObstacles() {
     obstacles = [];
     let count = Math.min(3 + level, 8);
     for(let i=0;i<count;i++){
-        let w = 15 + Math.random()*10; // thin obstacle
-        let h = 50 + Math.random()*80; 
+        let w = 15 + Math.random()*10;
+        let h = 50 + Math.random()*80;
         let x = 50 + Math.random()*800;
         let y = 50 + Math.random()*400;
 
-        // Ensure obstacle doesn't block the hole
         let dx = x + w/2 - hole.x;
         let dy = y + h/2 - hole.y;
         if(Math.sqrt(dx*dx + dy*dy) < hole.r + Math.max(w,h)){
-            i--; 
+            i--;
             continue;
         }
-
         obstacles.push({x,y,w,h});
     }
 }
 
 // ----------------- LEVEL -----------------
 function newLevel() {
-    ball.x = 150; ball.y = 250; ball.vx = 0; ball.vy = 0;
+    ball.x = 150; ball.y = 250;
+    ball.vx = 0; ball.vy = 0;
     hole.x = 200 + Math.random() * 600;
     hole.y = 80 + Math.random() * 300;
     generateObstacles();
@@ -67,9 +98,15 @@ function newLevel() {
 function getPos(evt){
     let rect = canvas.getBoundingClientRect();
     if(evt.touches){
-        return { x: evt.touches[0].clientX-rect.left, y: evt.touches[0].clientY-rect.top };
+        return {
+            x: evt.touches[0].clientX - rect.left,
+            y: evt.touches[0].clientY - rect.top
+        };
     }
-    return { x: evt.clientX-rect.left, y: evt.clientY-rect.top };
+    return {
+        x: evt.clientX - rect.left,
+        y: evt.clientY - rect.top
+    };
 }
 
 function startDrag(evt){
@@ -102,9 +139,9 @@ canvas.addEventListener("mousedown", startDrag);
 canvas.addEventListener("mousemove", moveDrag);
 canvas.addEventListener("mouseup", endDrag);
 
-canvas.addEventListener("touchstart", startDrag);
-canvas.addEventListener("touchmove", moveDrag);
-canvas.addEventListener("touchend", endDrag);
+canvas.addEventListener("touchstart", startDrag, {passive:false});
+canvas.addEventListener("touchmove", moveDrag, {passive:false});
+canvas.addEventListener("touchend", endDrag, {passive:false});
 
 // ----------------- DRAW -----------------
 function drawBackground(){
@@ -112,117 +149,84 @@ function drawBackground(){
     ctx.fillRect(0,0,900,500);
     ctx.fillStyle = "#2e8b47";
     ctx.fillRect(0,420,900,80);
-    ctx.fillStyle="rgba(0,0,0,0.06)";
-    for(let i=0;i<100;i++){
-        let x=Math.random()*900; let y=Math.random()*500;
-        ctx.fillRect(x,y,2,6);
-    }
 }
 
 function drawHole(){
-    ctx.save(); 
+    ctx.save();
     ctx.translate(hole.x,hole.y);
     ctx.fillStyle="#006400";
     ctx.beginPath(); ctx.arc(0,0,hole.r+5,0,Math.PI*2); ctx.fill();
     ctx.fillStyle="#000";
     ctx.beginPath(); ctx.arc(0,0,hole.r,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle="red"; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.moveTo(0,-hole.r-15); ctx.lineTo(0,0); ctx.stroke();
-    ctx.fillStyle="red";
-    ctx.beginPath(); ctx.moveTo(0,-hole.r-15); ctx.lineTo(8,-hole.r-8); ctx.lineTo(0,-hole.r-1); ctx.closePath(); ctx.fill();
     ctx.restore();
 }
 
 function drawObstacles(){
     ctx.fillStyle="#654321";
-    for(let o of obstacles) ctx.fillRect(o.x,o.y,o.w,o.h);
+    obstacles.forEach(o=>ctx.fillRect(o.x,o.y,o.w,o.h));
 }
 
 function drawBall(){
-    ctx.save(); ctx.translate(ball.x,ball.y);
-    ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(0,0,ball.r,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle="rgba(0,0,0,0.25)";
-    ctx.beginPath(); ctx.ellipse(4,6,ball.r*0.6,ball.r*0.3,0,0,Math.PI*2); ctx.fill();
-    ctx.restore();
+    ctx.fillStyle="white";
+    ctx.beginPath();
+    ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
+    ctx.fill();
 }
 
 function drawHUD(){
-    ctx.fillStyle="white"; ctx.font="32px Arial Black";
-    ctx.fillText("Score: "+score+"    Level: "+level,20,40);
+    ctx.fillStyle="white";
+    ctx.font="28px Arial Black";
+    ctx.fillText("Score: "+score+"   Level: "+level,20,35);
 }
 
-// ----------------- POWER BAR -----------------
-function drawPowerBar(){
-    if(dragging && dragEnd){
-        let dx = dragStart.x - dragEnd.x;
-        let dy = dragStart.y - dragEnd.y;
-        let power = Math.min(Math.sqrt(dx*dx + dy*dy), 150);
-        ctx.fillStyle="rgba(255,0,0,0.6)";
-        ctx.fillRect(ball.x - 50, ball.y - 30, power * 0.6, 10);
-        ctx.strokeStyle="#fff";
-        ctx.strokeRect(ball.x - 50, ball.y - 30, 150*0.6, 10);
-    }
-}
-
-function drawAimLine(){
-    if(dragging && dragEnd){
-        ctx.strokeStyle="rgba(255,0,0,0.7)";
-        ctx.lineWidth=3;
-        ctx.beginPath();
-        ctx.moveTo(ball.x,ball.y);
-        ctx.lineTo(dragEnd.x,dragEnd.y);
-        ctx.stroke();
-    }
-}
-
-// ----------------- COLLISION -----------------
-function collideObstacles(){
-    for(let o of obstacles){
-        if(ball.x+ball.r>o.x && ball.x-ball.r<o.x+o.w &&
-           ball.y+ball.r>o.y && ball.y-ball.r<o.y+o.h){
-            if(ball.x<o.x || ball.x>o.x+o.w) ball.vx*=-0.8;
-            if(ball.y<o.y || ball.y>o.y+o.h) ball.vy*=-0.8;
-        }
-    }
-}
-
-// ----------------- PHYSICS -----------------
+// ----------------- PHYSICS（安全不穿牆） -----------------
 function physics(){
-    ball.x += ball.vx; ball.y += ball.vy;
+    let nextX = ball.x + ball.vx;
+    let nextY = ball.y + ball.vy;
 
-    let margin = ball.r + 5;
-    if(ball.x < margin){ ball.x = margin; ball.vx*=-0.7; }
-    if(ball.x > 900 - margin){ ball.x = 900 - margin; ball.vx*=-0.7; }
-    if(ball.y < margin){ ball.y = margin; ball.vy*=-0.7; }
-    if(ball.y > 420 - margin){ ball.y = 420 - margin; ball.vy*=-0.7; }
+    const left = ball.r;
+    const right = 900 - ball.r;
+    const top = ball.r;
+    const bottom = 420 - ball.r;
 
-    // Sticky bottom zone
-    if(ball.y > 420){ ball.vx *= stickyFriction; ball.vy *= stickyFriction; }
-    else { ball.vx *= friction; ball.vy *= friction; }
+    if(nextX < left){ nextX = left; if(ball.vx < 0) ball.vx *= -0.8; }
+    if(nextX > right){ nextX = right; if(ball.vx > 0) ball.vx *= -0.8; }
+    if(nextY < top){ nextY = top; if(ball.vy < 0) ball.vy *= -0.8; }
+    if(nextY > bottom){ nextY = bottom; if(ball.vy > 0) ball.vy *= -0.8; }
 
-    collideObstacles();
+    ball.x = nextX;
+    ball.y = nextY;
 
-    let dx = ball.x - hole.x; let dy = ball.y - hole.y;
-    if(Math.sqrt(dx*dx+dy*dy) < hole.r){ score++; newLevel(); }
+    ball.vx *= friction;
+    ball.vy *= friction;
+
+    if(Math.abs(ball.vx) < 0.02) ball.vx = 0;
+    if(Math.abs(ball.vy) < 0.02) ball.vy = 0;
+
+    let dx = ball.x - hole.x;
+    let dy = ball.y - hole.y;
+    if(Math.sqrt(dx*dx+dy*dy) < hole.r){
+        score++;
+        newLevel();
+    }
 }
 
-// ----------------- MAIN LOOP -----------------
+// ----------------- LOOP -----------------
 generateObstacles();
 function loop(){
     ctx.clearRect(0,0,900,500);
-    drawBackground(); 
-    drawHole(); 
+    drawBackground();
+    drawHole();
     drawObstacles();
-    drawBall(); 
-    drawHUD(); 
-    drawAimLine();
-    drawPowerBar();
+    drawBall();
+    drawHUD();
     if(!dragging) physics();
     requestAnimationFrame(loop);
 }
 loop();
-
 </script>
 """,
 height=520,
-scrolling=False) 
+scrolling=False
+)
+
