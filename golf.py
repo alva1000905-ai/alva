@@ -30,16 +30,29 @@ canvas {
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
+// ----------------- GAME CONSTANTS -----------------
+const GAME_WIDTH = 900;
+const GAME_HEIGHT = 500;
+
 // ----------------- RESPONSIVE SCALE -----------------
+let scale = 1;
+let displayWidth = GAME_WIDTH;
+let displayHeight = GAME_HEIGHT;
+
 function resizeGame(){
     const screenW = window.innerWidth;
     const screenH = window.innerHeight;
 
-    const scaleW = screenW / 900;
-    const scaleH = screenH / 500;
+    const scaleW = screenW / GAME_WIDTH;
+    const scaleH = screenH / GAME_HEIGHT;
 
-    const scale = Math.min(scaleW, scaleH, 1);
-    canvas.style.transform = `scale(${scale})`;
+    scale = Math.min(scaleW, scaleH, 1);
+
+    displayWidth = GAME_WIDTH * scale;
+    displayHeight = GAME_HEIGHT * scale;
+
+    canvas.style.width = displayWidth + "px";
+    canvas.style.height = displayHeight + "px";
 }
 
 window.addEventListener("resize", resizeGame);
@@ -93,8 +106,8 @@ function newLevel() {
 // ----------------- INPUT -----------------
 function getPos(evt){
     let rect = canvas.getBoundingClientRect();
-    let scaleX = canvas.width / rect.width;
-    let scaleY = canvas.height / rect.height;
+    let scaleX = GAME_WIDTH / rect.width;
+    let scaleY = GAME_HEIGHT / rect.height;
 
     if(evt.touches){
         return { 
@@ -145,12 +158,12 @@ canvas.addEventListener("touchend", endDrag);
 // ----------------- DRAW -----------------
 function drawBackground(){
     ctx.fillStyle = "#3ebd59";
-    ctx.fillRect(0,0,900,500);
+    ctx.fillRect(0,0,GAME_WIDTH,GAME_HEIGHT);
     ctx.fillStyle = "#2e8b47";
-    ctx.fillRect(0,420,900,80);
+    ctx.fillRect(0,420,GAME_WIDTH,80);
     ctx.fillStyle="rgba(0,0,0,0.06)";
     for(let i=0;i<100;i++){
-        let x=Math.random()*900; let y=Math.random()*500;
+        let x=Math.random()*GAME_WIDTH; let y=Math.random()*GAME_HEIGHT;
         ctx.fillRect(x,y,2,6);
     }
 }
@@ -227,13 +240,16 @@ function physics(){
     ball.x += ball.vx; ball.y += ball.vy;
 
     let margin = ball.r + 5;
-    if(ball.x < margin){ ball.x = margin; ball.vx*=-0.7; }
-    if(ball.x > 900 - margin){ ball.x = 900 - margin; ball.vx*=-0.7; }
-    if(ball.y < margin){ ball.y = margin; ball.vy*=-0.7; }
-    if(ball.y > 420 - margin){ ball.y = 420 - margin; ball.vy*=-0.7; }
 
-    if(ball.y > 420){ ball.vx *= 0.90; ball.vy *= 0.90; }
-    else { ball.vx *= 0.985; ball.vy *= 0.985; }
+    // 動態邊界判斷
+    if(ball.x < margin){ ball.x = margin; ball.vx*=-0.7; }
+    if(ball.x > GAME_WIDTH - margin){ ball.x = GAME_WIDTH - margin; ball.vx*=-0.7; }
+    if(ball.y < margin){ ball.y = margin; ball.vy*=-0.7; }
+    if(ball.y > GAME_HEIGHT - 80 - margin){ ball.y = GAME_HEIGHT - 80 - margin; ball.vy*=-0.7; }
+
+    // Sticky bottom zone
+    if(ball.y > GAME_HEIGHT - 80){ ball.vx *= stickyFriction; ball.vy *= stickyFriction; }
+    else { ball.vx *= friction; ball.vy *= friction; }
 
     collideObstacles();
 
@@ -244,7 +260,7 @@ function physics(){
 // ----------------- MAIN LOOP -----------------
 generateObstacles();
 function loop(){
-    ctx.clearRect(0,0,900,500);
+    ctx.clearRect(0,0,GAME_WIDTH,GAME_HEIGHT);
     drawBackground(); 
     drawHole(); 
     drawObstacles();
@@ -256,10 +272,12 @@ function loop(){
     requestAnimationFrame(loop);
 }
 loop();
+
 </script>
 """,
 height=520,
 scrolling=False
 )
+
 
 
