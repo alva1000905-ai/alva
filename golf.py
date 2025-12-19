@@ -7,14 +7,43 @@ components.html(
 """
 <style>
 body { margin:0; overflow:hidden; background:#2ba84a; }
-canvas { touch-action:none; }
+
+#game-wrapper{
+    width:100%;
+    height:100%;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+}
+
+canvas { 
+    touch-action:none; 
+    transform-origin: top left;
+}
 </style>
 
-<canvas id="game" width="900" height="500"></canvas>
+<div id="game-wrapper">
+    <canvas id="game" width="900" height="500"></canvas>
+</div>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+
+// ----------------- RESPONSIVE SCALE -----------------
+function resizeGame(){
+    const screenW = window.innerWidth;
+    const screenH = window.innerHeight;
+
+    const scaleW = screenW / 900;
+    const scaleH = screenH / 500;
+
+    const scale = Math.min(scaleW, scaleH, 1);
+    canvas.style.transform = `scale(${scale})`;
+}
+
+window.addEventListener("resize", resizeGame);
+resizeGame();
 
 // ----------------- GAME STATE -----------------
 let level = 1;
@@ -37,19 +66,17 @@ function generateObstacles() {
     obstacles = [];
     let count = Math.min(3 + level, 8);
     for(let i=0;i<count;i++){
-        let w = 15 + Math.random()*10; // thin obstacle
+        let w = 15 + Math.random()*10;
         let h = 50 + Math.random()*80; 
         let x = 50 + Math.random()*800;
         let y = 50 + Math.random()*400;
 
-        // Ensure obstacle doesn't block the hole
         let dx = x + w/2 - hole.x;
         let dy = y + h/2 - hole.y;
         if(Math.sqrt(dx*dx + dy*dy) < hole.r + Math.max(w,h)){
             i--; 
             continue;
         }
-
         obstacles.push({x,y,w,h});
     }
 }
@@ -66,10 +93,19 @@ function newLevel() {
 // ----------------- INPUT -----------------
 function getPos(evt){
     let rect = canvas.getBoundingClientRect();
+    let scaleX = canvas.width / rect.width;
+    let scaleY = canvas.height / rect.height;
+
     if(evt.touches){
-        return { x: evt.touches[0].clientX-rect.left, y: evt.touches[0].clientY-rect.top };
+        return { 
+            x: (evt.touches[0].clientX - rect.left) * scaleX,
+            y: (evt.touches[0].clientY - rect.top) * scaleY
+        };
     }
-    return { x: evt.clientX-rect.left, y: evt.clientY-rect.top };
+    return { 
+        x: (evt.clientX - rect.left) * scaleX,
+        y: (evt.clientY - rect.top) * scaleY
+    };
 }
 
 function startDrag(evt){
@@ -196,9 +232,8 @@ function physics(){
     if(ball.y < margin){ ball.y = margin; ball.vy*=-0.7; }
     if(ball.y > 420 - margin){ ball.y = 420 - margin; ball.vy*=-0.7; }
 
-    // Sticky bottom zone
-    if(ball.y > 420){ ball.vx *= stickyFriction; ball.vy *= stickyFriction; }
-    else { ball.vx *= friction; ball.vy *= friction; }
+    if(ball.y > 420){ ball.vx *= 0.90; ball.vy *= 0.90; }
+    else { ball.vx *= 0.985; ball.vy *= 0.985; }
 
     collideObstacles();
 
@@ -221,9 +256,10 @@ function loop(){
     requestAnimationFrame(loop);
 }
 loop();
-
 </script>
 """,
 height=520,
-scrolling=False) 在此基礎上新增在手機上時的螢幕大小文提的解決,不要比例變怪,可以在手機上削減場地
+scrolling=False
+)
+
 
