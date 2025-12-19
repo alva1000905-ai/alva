@@ -207,58 +207,22 @@ function draw(){
 }
 
 // ================= PHYSICS =================
-function physics() {
-
-    // ---------- 預測下一位置 ----------
-    let nextX = ball.x + ball.vx;
-    let nextY = ball.y + ball.vy;
-
-    const left   = ball.r;
-    const right  = DESIGN_WIDTH - ball.r;
-    const top    = ball.r;
-    const bottom = 420 - ball.r;
-
-    // ---------- X 方向牆壁 ----------
-    if (nextX < left) {
-        nextX = left;
-        if (ball.vx < 0) ball.vx *= -0.8;
-    }
-    else if (nextX > right) {
-        nextX = right;
-        if (ball.vx > 0) ball.vx *= -0.8;
-    }
-
-    // ---------- Y 方向牆壁 ----------
-    if (nextY < top) {
-        nextY = top;
-        if (ball.vy < 0) ball.vy *= -0.8;
-    }
-    else if (nextY > bottom) {
-        nextY = bottom;
-        if (ball.vy > 0) ball.vy *= -0.8;
-    }
-
-    // ---------- 套用位置 ----------
-    ball.x = nextX;
-    ball.y = nextY;
-
-    // ---------- 摩擦力（最後才做） ----------
+function physics(){
+    ball.x += ball.vx;
+    ball.y += ball.vy;
     ball.vx *= friction;
     ball.vy *= friction;
 
-    // ---------- 小速度歸零（防抖動） ----------
-    if (Math.abs(ball.vx) < 0.02) ball.vx = 0;
-    if (Math.abs(ball.vy) < 0.02) ball.vy = 0;
+    if(ball.x<20||ball.x>880) ball.vx*=-0.7;
+    if(ball.y<20||ball.y>400) ball.vy*=-0.7;
 
-    // ---------- 進洞 ----------
-    const dx = ball.x - hole.x;
-    const dy = ball.y - hole.y;
-    if (Math.hypot(dx, dy) < hole.r) {
+    const dx = ball.x-hole.x;
+    const dy = ball.y-hole.y;
+    if(Math.hypot(dx,dy) < hole.r){
         score++;
         newLevel();
     }
 }
-
 
 // ================= LOOP =================
 generateObstacles();
