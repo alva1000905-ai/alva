@@ -1,10 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(
-    page_title="Golf Game",
-    layout="wide"
-)
+st.set_page_config(page_title="Golf Game", layout="wide")
 
 components.html(
 """
@@ -22,41 +19,58 @@ html, body {
     overflow: hidden;
 }
 
-canvas {
+#container {
     width: 100vw;
     height: 100vh;
-    display: block;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+canvas {
+    background: #2ba84a;
     touch-action: none;
 }
 </style>
 </head>
 
 <body>
-<canvas id="game"></canvas>
+<div id="container">
+    <canvas id="game"></canvas>
+</div>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-// ================= DESIGN SIZE =================
 const DESIGN_WIDTH = 900;
 const DESIGN_HEIGHT = 500;
 
-let scaleX = 1;
-let scaleY = 1;
+let scale = 1;
+let offsetX = 0;
+let offsetY = 0;
 
-// ================= RESIZE =================
+// ================= RESIZE (比例正確的核心) =================
 function resizeCanvas() {
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
+    const sw = window.innerWidth;
+    const sh = window.innerHeight;
 
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
+    scale = Math.min(sw / DESIGN_WIDTH, sh / DESIGN_HEIGHT);
+
+    const displayWidth = DESIGN_WIDTH * scale;
+    const displayHeight = DESIGN_HEIGHT * scale;
+
+    offsetX = (sw - displayWidth) / 2;
+    offsetY = (sh - displayHeight) / 2;
+
+    canvas.style.width = displayWidth + "px";
+    canvas.style.height = displayHeight + "px";
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = displayWidth * dpr;
+    canvas.height = displayHeight * dpr;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    scaleX = rect.width / DESIGN_WIDTH;
-    scaleY = rect.height / DESIGN_HEIGHT;
 }
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
@@ -72,46 +86,11 @@ let friction = 0.985;
 let stickyFriction = 0.90;
 
 let obstacles = [];
-
 let dragging = false;
 let dragStart = null;
 let dragEnd = null;
 
-// ================= OBSTACLES =================
-function generateObstacles() {
-    obstacles = [];
-    let count = Math.min(3 + level, 8);
-    for(let i=0;i<count;i++){
-        let w = 15 + Math.random()*10;
-        let h = 50 + Math.random()*80;
-        let x = 50 + Math.random()*800;
-        let y = 50 + Math.random()*350;
-
-        let dx = x + w/2 - hole.x;
-        let dy = y + h/2 - hole.y;
-        if(Math.sqrt(dx*dx + dy*dy) < hole.r + Math.max(w,h)){
-            i--;
-            continue;
-        }
-        obstacles.push({x,y,w,h});
-    }
-}
-
-// ================= LEVEL =================
-function newLevel() {
-    ball.x = 150;
-    ball.y = 250;
-    ball.vx = 0;
-    ball.vy = 0;
-
-    hole.x = 200 + Math.random() * 600;
-    hole.y = 80 + Math.random() * 300;
-
-    generateObstacles();
-    level++;
-}
-
-// ================= INPUT =================
+// ================= INPUT（修正偏移 + 比例） =================
 function getPos(evt){
     const rect = canvas.getBoundingClientRect();
     let x, y;
@@ -125,104 +104,100 @@ function getPos(evt){
     }
 
     return {
-        x: x / scaleX,
-        y: y / scaleY
+        x: x / scale,
+        y: y / scale
     };
 }
 
-function startDrag(evt){
-    evt.preventDefault();
-    const pos = getPos(evt);
-    const dx = pos.x - ball.x;
-    const dy = pos.y - ball.y;
-    if(Math.sqrt(dx*dx + dy*dy) < ball.r + 5){
+function startDrag(e){
+    e.preventDefault();
+    const p = getPos(e);
+    const dx = p.x - ball.x;
+    const dy = p.y - ball.y;
+    if(Math.hypot(dx,dy) < ball.r + 5){
         dragging = true;
-        dragStart = pos;
+        dragStart = p;
     }
 }
 
-function moveDrag(evt){
-    if(!dragging) return;
-    evt.preventDefault();
-    dragEnd = getPos(evt);
+function moveDrag(e){
+    if(dragging){
+        e.preventDefault();
+        dragEnd = getPos(e);
+    }
 }
 
-function endDrag(evt){
+function endDrag(e){
     if(!dragging) return;
-    evt.preventDefault();
+    e.preventDefault();
 
     dragEnd = dragEnd || dragStart;
-    const dx = dragStart.x - dragEnd.x;
-    const dy = dragStart.y - dragEnd.y;
-
-    ball.vx = dx * 0.12;
-    ball.vy = dy * 0.12;
+    ball.vx = (dragStart.x - dragEnd.x) * 0.12;
+    ball.vy = (dragStart.y - dragEnd.y) * 0.12;
 
     dragging = false;
-    dragStart = null;
-    dragEnd = null;
+    dragStart = dragEnd = null;
 }
 
 canvas.addEventListener("mousedown", startDrag);
 canvas.addEventListener("mousemove", moveDrag);
 canvas.addEventListener("mouseup", endDrag);
 
-canvas.addEventListener("touchstart", startDrag, { passive:false });
-canvas.addEventListener("touchmove", moveDrag, { passive:false });
-canvas.addEventListener("touchend", endDrag, { passive:false });
+canvas.addEventListener("touchstart", startDrag, {passive:false});
+canvas.addEventListener("touchmove", moveDrag, {passive:false});
+canvas.addEventListener("touchend", endDrag, {passive:false});
 
-// ================= DRAW =================
-function drawBackground(){
-    ctx.fillStyle = "#3ebd59";
-    ctx.fillRect(0,0,DESIGN_WIDTH,DESIGN_HEIGHT);
-
-    ctx.fillStyle = "#2e8b47";
-    ctx.fillRect(0,420,DESIGN_WIDTH,80);
+// ================= OBSTACLES =================
+function generateObstacles(){
+    obstacles = [];
+    let count = Math.min(3 + level, 8);
+    for(let i=0;i<count;i++){
+        let w = 20, h = 60 + Math.random()*80;
+        let x = 100 + Math.random()*650;
+        let y = 80 + Math.random()*280;
+        obstacles.push({x,y,w,h});
+    }
 }
 
-function drawHole(){
-    ctx.save();
-    ctx.translate(hole.x, hole.y);
-    ctx.fillStyle="#006400";
-    ctx.beginPath();
-    ctx.arc(0,0,hole.r+5,0,Math.PI*2);
-    ctx.fill();
+// ================= LEVEL =================
+function newLevel(){
+    ball.x = 150; ball.y = 250;
+    ball.vx = ball.vy = 0;
+    hole.x = 200 + Math.random()*600;
+    hole.y = 100 + Math.random()*250;
+    generateObstacles();
+    level++;
+}
+
+// ================= DRAW =================
+function draw(){
+    ctx.clearRect(0,0,DESIGN_WIDTH,DESIGN_HEIGHT);
+
+    ctx.fillStyle="#3ebd59";
+    ctx.fillRect(0,0,DESIGN_WIDTH,DESIGN_HEIGHT);
+
+    ctx.fillStyle="#2e8b47";
+    ctx.fillRect(0,420,DESIGN_WIDTH,80);
+
+    ctx.fillStyle="#654321";
+    obstacles.forEach(o=>ctx.fillRect(o.x,o.y,o.w,o.h));
 
     ctx.fillStyle="#000";
     ctx.beginPath();
-    ctx.arc(0,0,hole.r,0,Math.PI*2);
+    ctx.arc(hole.x,hole.y,hole.r,0,Math.PI*2);
     ctx.fill();
 
-    ctx.strokeStyle="red";
-    ctx.lineWidth=2;
-    ctx.beginPath();
-    ctx.moveTo(0,-hole.r-15);
-    ctx.lineTo(0,0);
-    ctx.stroke();
-    ctx.restore();
-}
-
-function drawObstacles(){
-    ctx.fillStyle="#654321";
-    obstacles.forEach(o => ctx.fillRect(o.x,o.y,o.w,o.h));
-}
-
-function drawBall(){
-    ctx.fillStyle="white";
+    ctx.fillStyle="#fff";
     ctx.beginPath();
     ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
     ctx.fill();
-}
 
-function drawHUD(){
-    ctx.fillStyle="white";
+    ctx.fillStyle="#fff";
     ctx.font="24px Arial Black";
-    ctx.fillText(`Score: ${score}   Level: ${level}`, 20, 35);
-}
+    ctx.fillText(`Score: ${score}  Level: ${level}`,20,35);
 
-function drawAimLine(){
     if(dragging && dragEnd){
-        ctx.strokeStyle="rgba(255,0,0,0.7)";
+        ctx.strokeStyle="red";
         ctx.lineWidth=3;
         ctx.beginPath();
         ctx.moveTo(ball.x,ball.y);
@@ -231,29 +206,7 @@ function drawAimLine(){
     }
 }
 
-function drawPowerBar(){
-    if(dragging && dragEnd){
-        const dx = dragStart.x - dragEnd.x;
-        const dy = dragStart.y - dragEnd.y;
-        const power = Math.min(Math.sqrt(dx*dx + dy*dy), 150);
-        ctx.fillStyle="rgba(255,0,0,0.6)";
-        ctx.fillRect(ball.x - 50, ball.y - 30, power * 0.6, 10);
-        ctx.strokeStyle="#fff";
-        ctx.strokeRect(ball.x - 50, ball.y - 30, 90, 10);
-    }
-}
-
 // ================= PHYSICS =================
-function collideObstacles(){
-    obstacles.forEach(o => {
-        if(ball.x+ball.r>o.x && ball.x-ball.r<o.x+o.w &&
-           ball.y+ball.r>o.y && ball.y-ball.r<o.y+o.h){
-            ball.vx *= -0.8;
-            ball.vy *= -0.8;
-        }
-    });
-}
-
 function physics() {
 
     // ---------- 預測下一位置 ----------
@@ -307,29 +260,13 @@ function physics() {
 }
 
 
-// ================= MAIN LOOP =================
+// ================= LOOP =================
 generateObstacles();
-
 function loop(){
-    ctx.save();
-    ctx.scale(scaleX, scaleY);
-
-    ctx.clearRect(0,0,DESIGN_WIDTH,DESIGN_HEIGHT);
-
-    drawBackground();
-    drawHole();
-    drawObstacles();
-    drawBall();
-    drawHUD();
-    drawAimLine();
-    drawPowerBar();
-
     if(!dragging) physics();
-
-    ctx.restore();
+    draw();
     requestAnimationFrame(loop);
 }
-
 loop();
 </script>
 </body>
