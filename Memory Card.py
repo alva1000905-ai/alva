@@ -13,40 +13,57 @@ st.markdown("""
 <style>
 .stApp {
     background-color: #f0f4f8;
+    color: #222222;
 }
 
-h1 {
-    text-align: center;
-    color: #2c3e50;
+html, body, p, span, label, li {
+    color: #222222 !important;
+}
+
+h1, h2, h3 {
+    color: #2c3e50 !important;
 }
 
 .game-title {
     text-align: center;
     font-size: 42px;
-    color: #2980b9;
+    color: #2980b9 !important;
     font-weight: bold;
 }
 
 .game-info {
     text-align: center;
-    background-color: white;
-    color: #333333;
+    background-color: #ffffff;
+    color: #222222 !important;
     padding: 15px;
     border-radius: 12px;
     margin-bottom: 20px;
+}
+
+.game-info h3 {
+    color: #222222 !important;
 }
 
 .stButton > button {
     font-size: 30px;
     height: 85px;
     border-radius: 12px;
-    background-color: white;
+    background-color: #ffffff !important;
+    color: #222222 !important;
     border: 2px solid #2980b9;
 }
 
+.stButton > button p {
+    color: #222222 !important;
+}
+
 .stButton > button:hover {
-    background-color: #d6eaf8;
+    background-color: #d6eaf8 !important;
     border-color: #1f618d;
+}
+
+[data-testid="stMarkdownContainer"] {
+    color: #222222;
 }
 </style>
 
