@@ -8,6 +8,10 @@ st.set_page_config(
     layout="centered"
 )
 
+# Game settings
+EMOJIS = ["🍎", "🍌", "🍇", "🍓",
+          "🍉", "🍒", "🥝", "🍍"]
+
 # HTML and CSS
 st.markdown("""
 <style>
@@ -16,25 +20,25 @@ st.markdown("""
     color: #222222;
 }
 
-html, body, p, span, label, li {
-    color: #222222 !important;
+[data-testid="stMarkdownContainer"] {
+    color: #222222;
 }
 
-h1, h2, h3 {
-    color: #2c3e50 !important;
+h1, h2, h3, p, li {
+    color: #222222 !important;
 }
 
 .game-title {
     text-align: center;
-    font-size: 42px;
-    color: #2980b9 !important;
+    font-size: 40px;
     font-weight: bold;
+    color: #2980b9 !important;
 }
 
 .game-info {
     text-align: center;
-    background-color: #ffffff;
-    color: #222222 !important;
+    background-color: white;
+    color: #222222;
     padding: 15px;
     border-radius: 12px;
     margin-bottom: 20px;
@@ -45,42 +49,30 @@ h1, h2, h3 {
 }
 
 .stButton > button {
-    font-size: 30px;
-    height: 85px;
-    border-radius: 12px;
-    background-color: #ffffff !important;
+    background-color: white !important;
     color: #222222 !important;
     border: 2px solid #2980b9;
+    border-radius: 12px;
+    height: 75px;
+    width: 100%;
 }
 
 .stButton > button p {
     color: #222222 !important;
+    font-size: 28px;
 }
 
 .stButton > button:hover {
     background-color: #d6eaf8 !important;
-    border-color: #1f618d;
 }
 
-[data-testid="stMarkdownContainer"] {
-    color: #222222;
-}
 </style>
-
-<div class="game-title">🎮 Memory Card Game</div>
-<p style="text-align:center; color:#555;">
-Match all the cards to win!
-</p>
 """, unsafe_allow_html=True)
 
 
-# Create a new game
+# Start a new game
 def new_game():
-    cards = [
-        "🍎", "🍌", "🍇", "🍓",
-        "🍎", "🍌", "🍇", "🍓"
-    ]
-
+    cards = EMOJIS * 2
     random.shuffle(cards)
 
     st.session_state.cards = cards
@@ -89,32 +81,12 @@ def new_game():
     st.session_state.moves = 0
 
 
-# Initialize game
 if "cards" not in st.session_state:
     new_game()
 
 
-# Game instructions
-st.markdown("### How to Play")
-st.write("1. Click a card to flip it.")
-st.write("2. Find two cards with the same picture.")
-st.write("3. Match all four pairs to win!")
-
-
-# Score display
-pairs = len(st.session_state.matched) // 2
-
-st.markdown(f"""
-<div class="game-info">
-    <h3>Moves: {st.session_state.moves}</h3>
-    <h3>Matched Pairs: {pairs} / 4</h3>
-</div>
-""", unsafe_allow_html=True)
-
-
 # Handle card clicks
 def flip_card(index):
-
     if index in st.session_state.matched:
         return
 
@@ -127,31 +99,49 @@ def flip_card(index):
     st.session_state.flipped.append(index)
 
     if len(st.session_state.flipped) == 2:
-
         st.session_state.moves += 1
 
         a, b = st.session_state.flipped
 
         if st.session_state.cards[a] == st.session_state.cards[b]:
-
             st.session_state.matched.extend([a, b])
-
             st.session_state.flipped = []
 
 
-# Display cards
+# Title
+st.markdown("""
+<div class="game-title">🎮 Memory Card Game</div>
+<p style="text-align:center;">
+Find all 8 matching pairs!
+</p>
+""", unsafe_allow_html=True)
+
+# Instructions
+st.markdown("### How to Play")
+st.write("1. Click two cards to flip them.")
+st.write("2. Find matching pictures.")
+st.write("3. Match all 8 pairs to win!")
+
+# Score
+pairs = len(st.session_state.matched) // 2
+
+st.markdown(f"""
+<div class="game-info">
+    <h3>Moves: {st.session_state.moves}</h3>
+    <h3>Matched Pairs: {pairs} / 8</h3>
+</div>
+""", unsafe_allow_html=True)
+
+# 4 x 4 game board
 st.markdown("### Game Board")
 
-for row in range(2):
-
+for row in range(4):
     columns = st.columns(4)
 
     for col in range(4):
-
         index = row * 4 + col
 
         with columns[col]:
-
             if (
                 index in st.session_state.flipped
                 or index in st.session_state.matched
@@ -168,35 +158,26 @@ for row in range(2):
                 args=(index,)
             )
 
-
-# Winning message
-if len(st.session_state.matched) == 8:
-
+# Win condition
+if len(st.session_state.matched) == 16:
     st.success("🎉 Congratulations! You Win!")
-
     st.write(
         f"You completed the game in "
         f"{st.session_state.moves} moves!"
     )
-
     st.balloons()
 
-
-# Restart button
+# Restart
 st.markdown("---")
 
 if st.button("🔄 Restart Game", use_container_width=True):
-
     new_game()
-
     st.rerun()
 
-
-# Footer HTML
+# Footer
 st.markdown("""
 <hr>
-<p style="text-align:center; color:gray;">
-Memory Card Game<br>
-Created with Python, Streamlit, HTML and CSS
+<p style="text-align:center; color:#555555 !important;">
+Memory Card Game | Python + Streamlit + HTML + CSS
 </p>
 """, unsafe_allow_html=True)
